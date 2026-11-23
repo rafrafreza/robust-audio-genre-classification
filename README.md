@@ -2,6 +2,8 @@
 
 The training and test audio come from different distributions. Training data is clean, single-song instrument stems; test clips are mashups of stems from different songs of the same genre, with tempo shifts and ESC-50 environmental noise. This project classifies 10 genres under that shift. Simulating the test-time mashup process during training, then fine-tuning an AudioSet-pretrained Audio Spectrogram Transformer, raised Kaggle macro F1 from 0.358 (MFCC + logistic regression) to 0.890.
 
+Built as the course project for *Introduction to Deep Learning and GenAI* (BSDA2001P) at IIT Madras and scored on the course's Kaggle competition. The full write-up is in the [technical report](docs/technical-report.pdf).
+
 ![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue) ![PyTorch](https://img.shields.io/badge/pytorch-2.15-ee4c2c) ![License: MIT](https://img.shields.io/badge/license-MIT-green) [![Demo](https://img.shields.io/badge/demo-Hugging%20Face%20Space-yellow)](https://huggingface.co/spaces/ghazi-r3/music-genre-classifier)
 
 **Live demo:** the fine-tuned AST is deployed as a [Gradio app on Hugging Face Spaces](https://huggingface.co/spaces/ghazi-r3/music-genre-classifier). Upload any audio clip and it returns genre probabilities averaged over 5 random 5 s crops. The weights are published at [`ghazi-r3/messy-mashup-genre-classifier`](https://huggingface.co/ghazi-r3/messy-mashup-genre-classifier). The Space sleeps when idle, so the first request takes a minute to wake it.
@@ -18,7 +20,13 @@ The training and test audio come from different distributions. Training data is 
 
 The largest jump (+0.450) came with the CNN, which introduced the full test-like mashup simulation (noise injection, random stem weighting) and a spectrogram model at the same time; no ablation separates the two.
 
-<sub>Validation sets are simulated mashups built only from 15 held-out songs per genre, with 30 / 200 / 100 mashups per genre for CNN / CRNN / AST. ¹ The baseline notebook reports 0.714, but it splits mashups rather than songs, so validation shares songs with training. That number is not comparable and is omitted.</sub>
+<p align="center"><img src="docs/figures/leaderboard.png" width="720" alt="Kaggle macro F1 for each of the five models"></p>
+
+The AST's remaining errors are concentrated in a few genre pairs rather than spread evenly. On validation, 24% of rock mashups were labelled country, 15% of classical were labelled jazz and 13% of pop were labelled hip-hop. Metal was never missed.
+
+<p align="center"><img src="docs/figures/ast_confusion.png" width="520" alt="AST validation confusion matrix"></p>
+
+<sub>Validation sets are simulated mashups built only from 15 held-out songs per genre, with 30 / 200 / 100 mashups per genre for CNN / CRNN / AST. ¹ The baseline notebook reports 0.714, but it splits mashups rather than songs, so validation shares songs with training. That number is not comparable and is omitted. The technical report quotes approximate validation scores that differ from the saved notebook outputs; this table uses the notebook outputs.</sub>
 
 ## The core problem: train/test distribution shift
 
@@ -74,6 +82,8 @@ This is the AudioSet-pretrained AST (`MIT/ast-finetuned-audioset-10-10-0.4593`: 
 
 The order matters because the new head starts random. Its early gradients are large and carry no genre information, and if the encoder were trainable at that point those gradients would overwrite pretrained AudioSet features before the head had learned anything (catastrophic forgetting). Training the head first means that when the encoder unfreezes, its gradients already reflect genre, and the small learning rate adjusts features rather than replacing them. In the run, validation F1 rose 0.826 → 0.835 → 0.852 during phase 1. It dipped to 0.806 on the first full fine-tuning epoch and finished at 0.862. Its limit is that it was trained for only 5 epochs on 5 s clips.
 
+<p align="center"><img src="docs/figures/ast_two_phase.png" width="720" alt="AST train and validation macro F1 per epoch across both phases"></p>
+
 ## Reproducing
 
 This needs the Messy Mashup competition data (`genres_stems/`, `ESC-50-master/`, `mashups/`, `test.csv`), which is not redistributed here. With that in one folder:
@@ -99,6 +109,7 @@ src/
   inference.py       batch prediction with test-time augmentation
   evaluate.py        rebuilds the results table from checkpoints
 notebooks/           the five original experiments, with their outputs
+docs/                technical report, README figures and the script that draws them
 tests/               model shapes and sizes, AST freezing, augmentation pipeline
 ```
 
