@@ -1,0 +1,24 @@
+# Versions verified with the test suite and an end-to-end CLI smoke test
+# (Python 3.11, CPU). The original experiments ran on Kaggle GPU images
+# (Python 3.12) whose exact package versions were not recorded.
+
+# core
+numpy==2.4.6
+pandas==3.1.1
+scikit-learn==1.9.1
+joblib==1.6.0
+librosa==0.11.0
+soundfile==0.14.0
+tqdm==4.70.1
+
+# deep learning (install the CUDA build of torch/torchaudio for GPU training)
+torch==2.15.0
+torchaudio==2.11.1
+transformers==5.24.0
+
+# notebooks only
+matplotlib==3.11.2
+seaborn==0.13.2
+
+# tests
+pytest==9.2.0
